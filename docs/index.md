@@ -3,23 +3,24 @@
 layout: home
 
 hero:
-  name: "sysss-blogs"
-  text: "A VitePress Site"
-  tagline: My great project tagline
+  name: "Ao Sun's Personal Website"
+  tagline: Welcome to my personal website!
   actions:
     - theme: brand
-      text: Markdown Examples
-      link: /markdown-examples
+      text: About Me
+      link: /about
     - theme: alt
-      text: API Examples
-      link: /api-examples
+      text: Publications
+      link: /publications
+    - theme: alt
+      text: Blog
+      link: /blog/
 
 features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  - title: About
+    details: Bio, research interests, education, experience, and contact.
+  - title: Publications
+    details: Yearly publication list designed for long-term maintenance.
+  - title: Blog
+    details: In-site blog grouped by themes for technical notes and insights.
 ---
-
