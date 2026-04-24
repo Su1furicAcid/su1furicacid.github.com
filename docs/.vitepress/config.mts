@@ -15,6 +15,9 @@ export default defineConfig({
   description: 'Personal Homepage',
   base: '/',
   cleanUrls: true,
+  markdown: {
+    math: true
+  },
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     search: {
