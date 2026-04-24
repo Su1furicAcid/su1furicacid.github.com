@@ -216,7 +216,7 @@ $S'(k)=\exists n.\ \underbrace{\phi(s_n)}_{\text{不变式}}
 
 $KInv(x_k)$ 的形式是 $\tau(x, \delta)$，$\tau$ 对应模板表达式，$x$ 对应所有变量，$\delta$ 对应表达式中的参数。k-invariant 定义为：
 
-$$\tau[k](\delta)=\bigwedge_{i \in [0,k-1]}\tau(x_i,\delta)$$
+$$\tau^{[k]}(\delta)=\bigwedge_{i \in [0,k-1]}\tau(x_i,\delta)$$
 
 k-invariant 的合成基于抽象解释。
 
@@ -228,7 +228,7 @@ $$T[k]=\bigwedge_{i \in [0,k-1]}Trans(x_i,x_{i+1})$$
 
 类似 CEGAR 的思路，从 $d=\bot$ 开始，迭代求解：
 
-$$\tau[k](d) \land T[k] \land \neg \tau(x_k,d)$$
+$$\tau^{[k]}(d) \land T[k] \land \neg \tau(x_k,d)$$
 
 如果上面的公式 SAT，说明找到了一个反例，那么利用反例的结果增强原先的抽象域，表示为用 $d_{old} \gets d_{old} \sqcup d_{neg}$
 
