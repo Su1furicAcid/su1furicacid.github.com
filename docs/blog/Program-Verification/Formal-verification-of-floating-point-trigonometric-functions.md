@@ -1,3 +1,12 @@
+---
+title: Formal verification of floating point trigonometric functions
+date: 2026-04-22
+summary: Paper reading notes on the formal verification of floating point trigonometric functions using HOL Light.
+tags:
+  - Program Verification
+  - Floating Point Arithmetic
+---
+
 # Formal verification of floating point trigonometric functions
 
 论文 Formal verification of floating point trigonometric functions (FMCAD 2000) 的阅读笔记。
