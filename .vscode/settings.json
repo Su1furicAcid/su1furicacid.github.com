@@ -1,0 +1,14 @@
+{
+  // Pasted/dropped images are saved into a per-post subfolder named after the
+  // markdown file (without extension), so every post keeps its images together
+  // instead of cluttering the directory. Configured for VS Code's built-in
+  // markdown paste support (no extension required).
+  "markdown.copyFiles.destination": {
+    "docs/**/*": "${documentBaseName/\\.md$//}/"
+  },
+  // Fallback for the Paste Image extension, in case it is installed and
+  // intercepts the paste action. Produces the same per-post subfolder layout.
+  "pasteImage.path": "${currentFileDir}/${currentFileNameWithoutExt}",
+  "pasteImage.defaultName": "img-YYYY-MM-DD-HH-mm-ss",
+  "pasteImage.forceUnixStyleSeparator": true
+}

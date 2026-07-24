@@ -8,12 +8,21 @@ export interface BlogPost {
   url: string
   topic: string
   topicLabel: string
+  subcategory?: string
+  subcategoryLabel?: string
+}
+
+export interface BlogSubcategoryGroup {
+  subcategory: string
+  subcategoryLabel: string
+  posts: BlogPost[]
 }
 
 export interface BlogTopicGroup {
   topic: string
   topicLabel: string
   posts: BlogPost[]
+  subcategories: BlogSubcategoryGroup[]
 }
 
 interface NormalizeInput {
@@ -32,9 +41,17 @@ export function formatTopicLabel(topic: string): string {
     .join(' ')
 }
 
+export function formatSubcategoryLabel(subcategory: string): string {
+  // Subcategory labels preserve the raw directory name verbatim (including
+  // hyphens and underscores), e.g. "15-779" stays "15-779" instead of
+  // becoming "15 779". This is intentional for things like course numbers
+  // where the hyphen is meaningful.
+  return subcategory
+}
+
 export function normalizeBlogPost({ source, url, frontmatter }: NormalizeInput): BlogPost | null {
-  const topic = extractTopicFromUrl(url)
-  if (!topic) {
+  const parsed = extractTopicFromUrl(url)
+  if (!parsed) {
     return null
   }
 
@@ -49,8 +66,14 @@ export function normalizeBlogPost({ source, url, frontmatter }: NormalizeInput):
     summary,
     tags,
     url,
-    topic,
-    topicLabel: formatTopicLabel(topic)
+    topic: parsed.topic,
+    topicLabel: formatTopicLabel(parsed.topic),
+    ...(parsed.subcategory
+      ? {
+          subcategory: parsed.subcategory,
+          subcategoryLabel: formatSubcategoryLabel(parsed.subcategory)
+        }
+      : {})
   }
 }
 
@@ -79,26 +102,55 @@ export function sortBlogPosts(posts: BlogPost[]): BlogPost[] {
 }
 
 export function groupPostsByTopic(posts: BlogPost[]): BlogTopicGroup[] {
-  const groupMap = new Map<string, BlogPost[]>()
+  const topicMap = new Map<string, BlogPost[]>()
   for (const post of posts) {
-    const bucket = groupMap.get(post.topic)
+    const bucket = topicMap.get(post.topic)
     if (bucket) {
       bucket.push(post)
     } else {
-      groupMap.set(post.topic, [post])
+      topicMap.set(post.topic, [post])
     }
   }
 
-  return [...groupMap.entries()]
-    .map(([topic, topicPosts]) => ({
-      topic,
-      topicLabel: formatTopicLabel(topic),
-      posts: sortBlogPosts(topicPosts)
-    }))
+  return [...topicMap.entries()]
+    .map(([topic, topicPosts]) => {
+      const directPosts = sortBlogPosts(topicPosts.filter((post) => !post.subcategory))
+      const subcategories = groupSubcategories(topicPosts)
+
+      return {
+        topic,
+        topicLabel: formatTopicLabel(topic),
+        posts: directPosts,
+        subcategories
+      }
+    })
     .sort((a, b) => a.topicLabel.localeCompare(b.topicLabel))
 }
 
-function extractTopicFromUrl(url: string): string | null {
+function groupSubcategories(posts: BlogPost[]): BlogSubcategoryGroup[] {
+  const subMap = new Map<string, BlogPost[]>()
+  for (const post of posts) {
+    if (!post.subcategory) {
+      continue
+    }
+    const bucket = subMap.get(post.subcategory)
+    if (bucket) {
+      bucket.push(post)
+    } else {
+      subMap.set(post.subcategory, [post])
+    }
+  }
+
+  return [...subMap.entries()]
+    .map(([subcategory, subPosts]) => ({
+      subcategory,
+      subcategoryLabel: formatSubcategoryLabel(subcategory),
+      posts: sortBlogPosts(subPosts)
+    }))
+    .sort((a, b) => a.subcategoryLabel.localeCompare(b.subcategoryLabel))
+}
+
+function extractTopicFromUrl(url: string): { topic: string; subcategory?: string } | null {
   if (!url.startsWith(BLOG_PREFIX)) {
     return null
   }
@@ -109,7 +161,9 @@ function extractTopicFromUrl(url: string): string | null {
     return null
   }
 
-  return segments[1]
+  const topic = segments[1]
+  const subcategory = segments.length >= 4 ? segments[2] : undefined
+  return subcategory ? { topic, subcategory } : { topic }
 }
 
 function requireString(value: unknown, fieldName: string, source: string): string {

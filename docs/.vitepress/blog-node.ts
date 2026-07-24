@@ -40,14 +40,33 @@ export function loadBlogPostsFromFilesystem(docsDir: string) {
 }
 
 export function createBlogSidebarGroups(topicGroups: BlogTopicGroup[]): SidebarItem[] {
-  const groups = topicGroups.map((group) => ({
-    text: group.topicLabel,
-    collapsed: false,
-    items: group.posts.map((post) => ({
-      text: `${post.title} (${post.date})`,
-      link: post.url
-    }))
-  }))
+  const groups = topicGroups.map((group) => {
+    const items: SidebarItem[] = []
+
+    for (const post of group.posts) {
+      items.push({
+        text: `${post.title} (${post.date})`,
+        link: post.url
+      })
+    }
+
+    for (const sub of group.subcategories) {
+      items.push({
+        text: sub.subcategoryLabel,
+        collapsed: false,
+        items: sub.posts.map((post) => ({
+          text: `${post.title} (${post.date})`,
+          link: post.url
+        }))
+      })
+    }
+
+    return {
+      text: group.topicLabel,
+      collapsed: false,
+      items
+    }
+  })
 
   return [
     {

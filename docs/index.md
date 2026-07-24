@@ -1,26 +1,31 @@
 ---
-# https://vitepress.dev/reference/default-theme-home-page
-layout: home
-
-hero:
-  name: "Ao Sun's Personal Website"
-  tagline: Welcome to my personal website!
-  actions:
-    - theme: brand
-      text: About Me
-      link: /about
-    - theme: alt
-      text: Publications
-      link: /publications
-    - theme: alt
-      text: Blog
-      link: /blog/
-
-features:
-  - title: About
-    details: Bio, research interests, education, experience, and contact.
-  - title: Publications
-    details: Yearly publication list designed for long-term maintenance.
-  - title: Blog
-    details: In-site blog grouped by themes for technical notes and insights.
+title: About
+outline: [2, 3]
 ---
+
+# About Me
+
+I am **Ao Sun**, currently a undergraduate student at Wuhan University. 
+
+## Research Interests
+
+My experience in web development has sparked my interest in programming languages and software engineering. I am particularly interested in the following research areas:
+
+- `Static Program Analysis`
+- `Program Verification`
+- `AI for Software Engineering`
+- `Any other topics related to programming languages and software engineering`
+
+## Education
+
+- `B.S. in Computer Science`, `Wuhan University`, `2022 - 2026`
+
+## Hobbies and Interests
+
+I enjoy playing electronic games, especially First-Person Shooter (FPS) games and Role-Playing Games (RPGs). I also have a keen interest in electronic music.
+
+## Contact
+
+- Email: [2022300004031@whu.edu.com](mailto:2022300004031@whu.edu.com)
+- GitHub: [su1furicacid](https://github.com/su1furicacid)
+- CV: [Download CV](#)

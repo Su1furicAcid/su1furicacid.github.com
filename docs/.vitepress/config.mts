@@ -27,8 +27,7 @@ export default defineConfig({
       { icon: 'github', link: 'https://github.com/su1furicacid/su1furicacid.github.com' }
     ],
     nav: [
-      { text: 'Home', link: '/' },
-      { text: 'About', link: '/about' },
+      { text: 'About', link: '/' },
       { text: 'Publications', link: '/publications' },
       { text: 'Blog', link: '/blog/' }
     ],
@@ -37,9 +36,9 @@ export default defineConfig({
       '/blog/': blogSidebar,
       '/': [
         {
-          text: 'Home',
+          text: 'Pages',
           items: [
-            { text: 'About', link: '/about' },
+            { text: 'About', link: '/' },
             { text: 'Publications', link: '/publications' },
             { text: 'Blog', link: '/blog/' }
           ]
