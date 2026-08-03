@@ -1,6 +1,6 @@
 ---
 title: CMU 15-779 02-basics
-date: 2026-06-12
+date: 2026-07-24
 summary: Notes for CMU 15-779 02-basics
 tags:
   - MLSys

@@ -1,6 +1,6 @@
 ---
 title: CMU 15-779 03-CUDA programming 1
-date: 2026-06-12
+date: 2026-07-31
 summary: Notes for CMU 15-779 03-CUDA programming 1
 tags:
   - MLSys
