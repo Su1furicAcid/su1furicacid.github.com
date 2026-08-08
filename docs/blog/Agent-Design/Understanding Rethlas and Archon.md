@@ -52,35 +52,13 @@ Rethlas 的架构是「双 Agent + MCP 工具层 + Bash 编排器」：
 └─────────────────────────────────┘
 ```
 
-<Bilingual>
-<template #en>
-
-The system runs on [OpenAI's Codex CLI](https://github.com/openai/codex). Both the generation agent and the verification agent are Codex sessions driven by the same model (`gpt-5.6-sol`, reasoning effort = `max`). The generation agent is launched directly via `codex exec`, while the verification agent is wrapped in a FastAPI HTTP service that internally spawns a Codex subprocess for each verification request.
-
-</template>
-<template #zh>
-
-系统运行在 [OpenAI 的 Codex CLI](https://github.com/openai/codex) 之上。生成 Agent 和验证 Agent 都是由同一模型（`gpt-5.6-sol`，reasoning effort = `max`）驱动的 Codex 会话。生成 Agent 通过 `codex exec` 直接启动，而验证 Agent 则被封装在一个 FastAPI HTTP 服务中，每收到一个验证请求就内部启动一个 Codex 子进程来处理。
-
-</template>
-</Bilingual>
+系统跑在 [OpenAI 的 Codex CLI](https://github.com/openai/codex) 上。生成 Agent 和验证 Agent 都是由同一模型（`gpt-5.6-sol`，reasoning effort = `max`）驱动的 Codex 会话。生成 Agent 通过 `codex exec` 直接启动，验证 Agent 被包在一个 FastAPI HTTP 服务里，每收到一个验证请求就内部起一个 Codex 子进程来处理。
 
 ### 生成 Agent：自适应控制循环
 
 生成 Agent 的行为完全由 `AGENTS.md` 文件定义。这个文件是 Codex 的「行为剧本」——Codex 启动后读取它，照着里面的指令行事。
 
-<Bilingual>
-<template #en>
-
-The generation agent's `AGENTS.md` defines an **adaptive control loop** with four steps that repeat until the proof passes verification:
-
-</template>
-<template #zh>
-
-生成 Agent 的 `AGENTS.md` 定义了一个**自适应控制循环**，包含四个步骤，不断重复直到证明通过验证：
-
-</template>
-</Bilingual>
+生成 Agent 的 `AGENTS.md` 定义了一个**自适应控制循环**，四个步骤不断重复，直到证明通过验证：
 
 <Bilingual>
 <template #en>
@@ -229,18 +207,7 @@ MCP 服务器提供了 6 个工具供 Codex 调用：
 
 验证 Agent 的架构比较特殊——它是一个 HTTP 服务外壳，内部却还是 Codex。
 
-<Bilingual>
-<template #en>
-
-The verification agent is exposed as a FastAPI HTTP service with a single `/verify` endpoint. When a request arrives, it does **not** check the proof with rules or a theorem prover. Instead, it constructs a prompt, spawns a `codex exec` subprocess, and waits for that Codex session to produce a `verification.json` file. The Codex subprocess reads `verification/AGENTS.md` and follows the verification workflow defined there.
-
-</template>
-<template #zh>
-
-验证 Agent 以 FastAPI HTTP 服务的形式暴露，只有一个 `/verify` 端点。当请求到达时，它**不是**用规则或定理证明器来检查证明，而是构造一个提示词，启动一个 `codex exec` 子进程，等待该 Codex 会话产出 `verification.json` 文件。Codex 子进程读取 `verification/AGENTS.md`，按照其中定义的验证流程行事。
-
-</template>
-</Bilingual>
+验证 Agent 以 FastAPI HTTP 服务的形式对外暴露，只有一个 `/verify` 端点。收到请求后，它**不是**用规则或定理证明器检查证明，而是拼一个提示词，起一个 `codex exec` 子进程，等这个 Codex 会话产出 `verification.json` 文件。Codex 子进程读 `verification/AGENTS.md`，按里面定义的验证流程行事。
 
 验证 Agent 的 API 层代码（`api/server.py`）核心逻辑非常简洁：
 
@@ -422,18 +389,7 @@ Archon 的架构是「三层循环 + 确定性脚手架 + 可互换引擎」：
                     循环直到 COMPLETE
 ```
 
-<Bilingual>
-<template #en>
-
-Archon runs on [Claude Code](https://claude.com/product/claude-code) (and, since v0.3.0, [Codex](https://github.com/openai/codex) as an alternative harness). Unlike Rethlas's two-agent natural-language loop, Archon orchestrates **four distinct agent roles** through a **plan → prove → review** loop that can run for dozens of iterations over a multi-file Lean project. The key insight is separating *strategic analysis* (the plan agent) from *tactical execution* (prover agents) to avoid context explosion — a single LLM conversation cannot hold the full state of a research-level formalization project.
-
-</template>
-<template #zh>
-
-Archon 运行在 [Claude Code](https://claude.com/product/claude-code) 之上（自 v0.3.0 起也支持 [Codex](https://github.com/openai/codex) 作为替代引擎）。与 Rethlas 的双 Agent 自然语言循环不同，Archon 通过一个 **plan → prove → review** 循环来编排**四种不同的 Agent 角色**，这个循环可以在一个多文件 Lean 项目上跑数十轮迭代。关键在于把*战略分析*（Plan Agent）和*战术执行*（Prover Agent）拆开，避免上下文爆炸——单个 LLM 对话装不下研究级形式化项目的全部状态。
-
-</template>
-</Bilingual>
+Archon 跑在 [Claude Code](https://claude.com/product/claude-code) 上（自 v0.3.0 起也支持 [Codex](https://github.com/openai/codex) 作为替代引擎）。与 Rethlas 的双 Agent 自然语言循环不同，Archon 通过一个 **plan → prove → review** 循环来编排**四种不同的 Agent 角色**，在一个多文件 Lean 项目上可以跑数十轮迭代。关键在于把*战略分析*（Plan Agent）和*战术执行*（Prover Agent）拆开，避免上下文爆炸——单个 LLM 对话装不下研究级形式化项目的全部状态。
 
 ### 三层循环
 
