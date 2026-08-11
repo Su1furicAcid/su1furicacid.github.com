@@ -67,23 +67,22 @@ GLM-5.2 关注：
 
 ## Proof
 
-完整的证明文件 `step_demo.v` 可以在 [这里](https://github.com/su1furicacid/math_verify/blob/main/src/step_demo.v) 找到。下面从头逐行讲解。
+完整的证明文件 `step_demo.v` 可以在 [这里](https://github.com/su1furicacid/math_verify/blob/main/src/step_demo.v) 找到。
 
-### CompCert 与 Clight
+### 从 C 到 Clight
 
-[CompCert](https://compcert.org/) 是一个用 Coq 编写并形式化验证的 C 编译器。它的编译流程是一串中间语言：
+[CompCert](https://compcert.org/) 是一个用 Coq 写的、经过形式化验证的 C 编译器。编译流程经过多级中间语言：`C → Clight → Csharpminor → Cminor → ... → 汇编`，每一层都有形式化的语义定义，层与层之间的翻译有正确性证明。我们关心的是 Clight——最接近 C 源码的那一层。
 
-```
-C 源码 → Clight → Csharpminor → Cminor → ... → 汇编
-```
+CompCert 自带 `clightgen` 工具，把 `.c` 文件翻译成 `.v` 文件，里面是 Clight 的 AST。前文已经展示过 `fabs_musl.v` 的内容，GLM-5.2 要证明的东西可以归纳成两条：
 
-每一层都有形式化的语义（用 Coq 的 `Inductive` 定义），每一层之间的翻译都有正确性证明。我们操作的是 **Clight**——最接近 C 源码的中间表示。
+1. `u.f := x` 这条赋值语句，在 Clight 的 `step` 语义下确实一步执行成功，把 `x_val` 写入了内存；
+2. 写完之后，以 `Mint64` 格式读同一块内存，拿到的就是 `x_val` 的 IEEE 754 位模式（一个 `int64`）。
 
-CompCert 自带 `clightgen` 工具，可以把 `.c` 文件翻译成 `.v` 文件（Coq 源码），里面是 Clight 的 AST。`fabs_musl.v` 就是这么生成的。
+第一条证明赋值本身，第二条证明 union type-punning 的合法性。两条合在一起，才构成 fabs 后续位操作的基础。
 
-### Clight 的 `step` 语义
+### Clight 的执行模型
 
-Clight 用**小步操作语义**（small-step operational semantics）定义程序的执行。核心是一个 Coq 归纳关系：
+Clight 用小步操作语义定义程序执行。核心是一个 Coq 的 `Inductive` 关系：
 
 ```coq
 Inductive step : state -> trace -> state -> Prop :=
@@ -93,128 +92,39 @@ Inductive step : state -> trace -> state -> Prop :=
   | ...
 ```
 
-`step s1 t s2` 读作"状态 `s1` 一步转移到 `s2`，产生事件序列 `t`"。每个构造子是一条转移规则。
+`step s1 t s2` 意思是状态 `s1` 一步转移到 `s2`，附带产生事件序列 `t`（比如 I/O 操作）。fabs 的赋值语句不产生任何外部事件，所以 `t = E0`（空 trace）。
 
-#### 状态
+状态 `State f s k e le m` 携带六个东西：当前函数 `f`、即将执行的语句 `s`、续延 `k`（执行完当前语句后去哪）、局部变量环境 `e`（变量名 → 内存位置）、临时变量环境 `le`（临时变量名 → 值）、内存 `m`。
 
-```coq
-Inductive state :=
-  | State: function -> statement -> cont -> env -> temp_env -> mem -> state
-  | Callstate: ...
-  | Returnstate: ...
-```
-
-`State f s k e le m` 的六个字段：
-
-| 字段 | 类型 | 含义 |
-|------|------|------|
-| `f` | `function` | 当前函数（AST） |
-| `s` | `statement` | **即将执行的**下一条语句 |
-| `k` | `cont`（续延） | 执行完 `s` 后做什么 |
-| `e` | `env` | 局部变量 → 内存位置的映射 |
-| `le` | `temp_env` | 临时变量 → 值的映射 |
-| `m` | `mem` | 完整的内存状态 |
-
-在证明中，初始状态 `s0` 和终止状态 `s1` 是：
+对于 `u.f := x` 这条语句，执行前后两个状态是：
 
 ```coq
-Definition s0 : state := State f_fabs_musl stmt_1 Kstop e0 le0 m0.
-Definition s1 : state := State f_fabs_musl Sskip Kstop e0 le0 m1.
+s0 = State f_fabs_musl stmt_1 Kstop e0 le0 m0
+s1 = State f_fabs_musl Sskip  Kstop e0 le0 m1
 ```
 
-唯一变化：语句从 `u.f := x` 变成 `Sskip`（表示这条语句执行完了），内存从 `m0` 变成 `m1`（多了写入的数据）。
+只有两处变化：语句从 `stmt_1`（即 `u.f := x`）变成 `Sskip`（执行完了），内存从 `m0` 变成 `m1`（多了一次写入）。
 
-#### `step_assign` 规则
-
-`u.f := x` 匹配的规则是 `step_assign`（Clight.v:561）：
+`step_assign` 规则（Clight.v:561）把"一步赋值"拆成四个前提：
 
 ```coq
 | step_assign: forall f a1 a2 k e le m loc ofs bf v2 v m',
-    eval_lvalue e le m a1 loc ofs bf ->        (* 1. 求左值 *)
-    eval_expr e le m a2 v2 ->                   (* 2. 求右值 *)
-    sem_cast v2 (typeof a2) (typeof a1) m = Some v ->  (* 3. 类型转换 *)
-    assign_loc ge (typeof a1) m loc ofs bf v m' ->     (* 4. 写入内存 *)
-    step (State f (Sassign a1 a2) k e le m)
-         E0 (State f Sskip k e le m')
+    eval_lvalue e le m a1 loc ofs bf ->
+    eval_expr e le m a2 v2 ->
+    sem_cast v2 (typeof a2) (typeof a1) m = Some v ->
+    assign_loc ge (typeof a1) m loc ofs bf v m' ->
+    step (State f (Sassign a1 a2) k e le m) E0 (State f Sskip k e le m')
 ```
 
-要证明 `u.f := x` 一步执行，需要证明四件事：
+翻译过来就是：先算左值 `a1` 的内存位置 `(loc, ofs)`，再算右值 `a2` 的值 `v2`，做类型转换得到 `v`，最后把 `v` 写进内存得到 `m'`。证明目标就是逐一满足这四个前提。
 
-1. **左值求值**：`u.f` 对应哪个内存位置？
-2. **右值求值**：`x` 的值是什么？
-3. **类型转换**：把值从源类型转成目标类型
-4. **写入内存**：把值写到内存位置，得到新内存
+### 全局环境：为什么不能直接用 `globalenv`
 
-### 全局环境 `genv`
+规则里出现的 `ge` 是全局环境，包含两张表：`genv_genv`（函数名 → 函数定义）和 `genv_cenv`（struct/union 名 → 类型定义）。在 fabs 的赋值语句里，访问 `u.f` 需要查 `genv_cenv` 找到 union `__1049` 的成员布局信息，但不需要查 `genv_genv`——因为这条语句里没有函数调用。
 
-`step_assign` 的第 4 个前提中出现了 `ge`——全局环境。Clight 的全局环境是一个 record：
+CompCert 提供了现成的 `globalenv` 构造函数，一行就能造出完整的 `ge`。但问题出在 `Genv.globalenv` 这个函数上：它对 `prog_defs` 做 `fold_left`，逐个处理程序里 40 多个 `__builtin_*`、`__compcert_i64_*` 内建函数定义，构造一棵巨大的 PTree。`vm_compute` 试图计算这棵树的时候直接 OOM（exit 137）。
 
-```coq
-Record genv := {
-  genv_genv : Genv.t fundef type;   (* 全局函数表: 函数名 → 函数定义 *)
-  genv_cenv : composite_env          (* 复合类型表: struct/union 名 → 定义 *)
-}.
-```
-
-`genv_genv` 是函数查找表，程序里调用 `foo()` 时靠它查 `foo` 的函数定义。它不对应物理内存上的函数表——到了汇编层函数才存在于内存的代码段，Clight 层面只是一个 Coq 数据结构。
-
-`genv_cenv` 是 struct/union 类型查找表，访问 union/struct 成员时（如 `u.f`）靠它查类型信息。
-
-#### composite 是什么
-
-C 语言的 `struct` 和 `union` 在 CompCert 中统称为 **composite**（复合类型），有两层表示：
-
-第一层是 `composite_definition`——源码级的定义，直接对应 C 源码：
-
-```coq
-Inductive composite_definition : Type :=
-  Composite (id: ident) (su: struct_or_union) (m: members) (a: attr).
-```
-
-fabs 的 union 在源码里是 `union { double f; uint64_t i; }`，对应：
-
-```coq
-Composite __1049 Union
-  (Member_plain _f tdouble ::      (* 成员 f: double *)
-   Member_plain _i tulong :: nil)  (* 成员 i: uint64_t *)
-  noattr
-```
-
-这只是语法的记录——"有一个 union，两个成员 `f` 和 `i`"，没有算任何布局信息。
-
-第二层是 `composite`——带预计算布局的 record。`build_composite_env` 把 `composite_definition` 列表加工成 `composite`：
-
-```coq
-Record composite : Type := {
-  co_su      : struct_or_union;     (* Struct 或 Union *)
-  co_members : members;             (* 成员列表 *)
-  co_attr    : attr;
-  co_sizeof  : Z;                   (* 预计算的总大小 *)
-  co_alignof : Z;                   (* 预计算的对齐 *)
-  co_rank    : nat;
-  co_sizeof_pos     : co_sizeof >= 0;           (* 大小非负 *)
-  co_alignof_two_p  : exists n, ...;            (* 对齐是 2 的幂 *)
-  co_sizeof_alignof : (co_alignof | co_sizeof);  (* 对齐整除大小 *)
-}.
-```
-
-fabs 的 union 加工后：`co_sizeof = 8`（`max(8, 8) = 8`），`co_alignof = 8`。后三个字段是 proof——保证大小和对齐满足 C 标准。
-
-`composite_env` 就是 `ident → composite` 的 PTree 查找表。程序的 `prog_comp_env` 字段就是这个类型。
-
-#### 绕过 `globalenv` 的 OOM
-
-CompCert 提供了现成的构造函数：
-
-```coq
-Definition globalenv (p: program) :=
-  {| genv_genv := Genv.globalenv p;          (* 遍历所有函数定义 *)
-     genv_cenv := p.(prog_comp_env) |}.       (* 直接取，很轻量 *)
-```
-
-但 `Genv.globalenv p` 对 `prog_defs` 做 `fold_left`，要逐个处理 40 多个 `__builtin_*`、`__compcert_i64_*` 函数定义，构造一个巨大的 PTree。`vm_compute` 试图计算它时内存爆炸（OOM，exit 137）。
-
-关键观察：`step_assign` 只碰 `genv_cenv`（查 union 成员信息），完全不碰 `genv_genv`（查函数符号）。所以给 `genv_genv` 塞一个空表就行：
+解决办法是手工拼一个 `ge`，`genv_genv` 塞一个空的 PTree，`genv_cenv` 照常用 `prog.(prog_comp_env)`：
 
 ```coq
 Definition ge : Clight.genv :=
@@ -222,302 +132,66 @@ Definition ge : Clight.genv :=
      genv_cenv := prog.(prog_comp_env) |}.
 ```
 
-`@Genv.empty_genv` 构造一个符号表和定义表都是空 PTree 的全局环境，几乎零成本。`@` 是因为 `Genv` 模块的类型参数 `F` 和 `V` 无法从空 PTree 推断，必须手动指定为 `fundef` 和 `type`。`prog.(prog_public)` 是公开符号列表，填进去让类型正确就行，证明中不会查它。
+这里 `@` 是因为 `Genv` 模块带有类型参数 `F`（函数定义类型）和 `V`（类型信息），空 PTree 无法自动推断出这两个类型，只能手动写 `fundef` 和 `type`。`prog.(prog_public)` 是公开符号列表，填进去让 record 类型对上就行，反正在证明中永远不会查它。
 
-而 `prog.(prog_comp_env)` 只有一个 union，PTree 很小，`vm_compute` 瞬间算完。
+`prog.(prog_comp_env)` 来自 `build_composite_env`——把源码级的 `composite_definition` 列表加工成带预计算布局的 `composite` record。对于 fabs 程序来说只有一个 union（两个成员 `f: double` 和 `i: uint64_t`），PTree 极小，`vm_compute` 瞬间算完。
 
-### CompCert 的内存模型
+### 内存模型
 
-理解第二个证明（桥接引理）需要先了解 CompCert 的内存模型。
+CompCert 的内存不是平坦的字节流，而是分块的：每个分配（变量、malloc 等）对应一个 block，用正整数 ID 标识，block 内部按字节偏移寻址，每个字节带权限（Readable / Writable / Nonempty / Freeable）。fabs 中的 union `u` 分配在栈上一个 block `b_u` 里，占 8 字节——`double` 和 `uint64_t` 共享这 8 字节，这就是 type-punning 的物理基础。
 
-#### 内存 = 分块的字节数组
+读写内存时要指定 **chunk**，也就是数据的宽度和对齐方式。和 fabs 相关的两个 chunk 是 `Mfloat64`（对应 `double`，8 字节，对齐 4）和 `Mint64`（对应 `int64_t`，8 字节，对齐 8）。两者大小一样，但对齐不同——这个差异后面会制造不小的麻烦。
 
-CompCert 的 `mem` 不是一坨平坦的字节流，而是**分块的**（block-based）：
+值在写入时被 `encode_val` 编码成字节序列，读取时被 `decode_val` 解码。`encode_val Mfloat64 (Vfloat f)` 把浮点数的 IEEE 754 位模式编成 8 字节，`decode_val Mint64` 把 8 字节解成 `int64`。因为 IEEE 754 双精度的位模式本身就是 8 字节整数，所以"以 double 写入、以 int64 读取"拿到的就是同一个位模式。这正是桥接引理要形式化证明的东西。
 
-- 内存由若干 **block** 组成，每个 block 有一个 ID（正整数）
-- 每个 block 内部按**字节偏移**寻址
-- 每个字节有**权限**（Readable / Writable / Nonempty / Freeable）
+### 第一个证明：`step_assign_fabs`
 
-fabs 中，局部变量 `u` 是一个 union，分配在栈上一个 block `b_u` 里，有 8 字节（`double` 和 `uint64_t` 共享）。
-
-#### memory_chunk——读写的"格式"
-
-读写内存时必须指定 **chunk**（数据宽度+类型）：
-
-| chunk | 大小(字节) | 对齐 | 对应 C 类型 |
-|-------|-----------|------|------------|
-| `Mint32` | 4 | 4 | `int` |
-| `Mint64` | 8 | 8 | `int64_t` |
-| `Mfloat32` | 4 | 4 | `float` |
-| `Mfloat64` | 8 | **4** | `double` |
-
-注意：`Mint64` 和 `Mfloat64` **大小相同（8字节）但对齐不同**（8 vs 4）。这个差异后来会带来麻烦。
-
-#### 值的编码
-
-写入时，值被**编码**成字节序列；读取时，字节序列被**解码**成值：
-
-```
-写入: Vfloat x_val  --encode_val Mfloat64-->  [8 字节]
-读取: [8 字节]  --decode_val Mint64--> Vlong (Float.to_bits x_val)
-```
-
-`encode_val Mfloat64 (Vfloat f)` 把浮点数的 IEEE 754 位模式编码成 8 字节。`decode_val Mint64` 把 8 字节解码成 `int64`。因为 IEEE 754 双精度的位模式就是 8 字节整数，所以这两个操作的组合恰好实现了浮点到整数的类型双关。
-
-### 证明一：`step_assign_fabs`——一步执行
-
-#### 前提条件
+证明目标是 `step2 ge s0 E0 s1`，即状态 `s0` 一步转移到 `s1`。证明的设定部分有几个变量和假设：
 
 ```coq
-Variable b_u  : block.
-Variable m0   : mem.
-Variable x_val : Floats.float.
-
+Variable b_u  : block.       (* union u 的内存块 ID *)
+Variable m0   : mem.          (* 初始内存 *)
+Variable x_val : Floats.float. (* 参数 x 的值 *)
 Hypothesis m0_writable : Mem.valid_access m0 Mfloat64 b_u 0 Writable.
 ```
 
-`b_u` 是 union `u` 所在的内存块 ID，`m0` 是初始内存，`x_val` 是参数 `x` 的浮点值。唯一的假设是 `m0` 对 `b_u` 偏移 0 有 `Mfloat64 Writable` 权限——即这块内存可写。
+唯一的假设是 `b_u` 偏移 0 处以 `Mfloat64` 格式可写。由此可以定义 `m1`——写入 `x_val` 后的内存，以及辅助引理 `store_m1`，把假设转成等式形式供后面使用。
 
-#### 环境构造
+`eapply step_assign` 把目标拆成四个子目标。
 
-```coq
-Definition e0 : env :=
-  PTree.set _u (b_u, Tunion __1049 noattr) (PTree.empty (block * type)).
-```
+第一个子目标是求左值 `u.f` 的内存位置。`u` 是局部变量，从 `e0` 查到 `_u ↦ (b_u, Tunion __1049)`；union 的 `access_mode` 是 `By_copy`，所以 `deref_loc` 返回 `Vptr b_u 0`。然后查 `genv_cenv ! __1049` 确认这个 union 存在，再用 `union_field_offset` 算出成员 `_f` 的偏移——union 所有成员偏移都是 0。这两步用 `vm_compute` 直接算出来，因为 `prog.(prog_comp_env)` 只有这么一个 union，计算量极小。
 
-局部变量环境：`_u` 映射到 `(b_u, Tunion __1049)`，即变量 `u` 在内存块 `b_u` 中，类型是 union `__1049`。
+第二个子目标是求右值 `x`，从临时变量环境 `le0` 查到 `_x ↦ Vfloat x_val`，一行搞定。
 
-```coq
-Definition le0 : temp_env :=
-  PTree.set _x (Vfloat x_val)
-    (PTree.set _t'2 Vundef
-       (PTree.set _t'1 Vundef (PTree.empty val))).
-```
+第三个是类型转换，`double → double` 恒等，`reflexivity`。
 
-临时变量环境：`_x` 映射到 `Vfloat x_val`（参数值），`_t'1` 和 `_t'2` 是 `Vundef`（后面会用到的临时变量）。
+第四个是写入内存。`assign_loc_value` 需要 `access_mode tdouble = By_value Mfloat64`（成立）和 `storev` 成功（由辅助引理 `store_m1` 提供）。到此 `step_assign_fabs` 证完。
+
+### 第二个证明：`H1_bridge`
+
+桥接引理的命题是：
 
 ```coq
-Definition m1 : mem :=
-  match Mem.store Mfloat64 m0 b_u 0 (Vfloat x_val) with
-  | Some m' => m'
-  | None => m0
-  end.
+Mem.load Mint64 m1 b_u 0 = Some (Vlong (Float.to_bits x_val))
 ```
 
-`m1` 是把 `x_val` 以 `Mfloat64` 格式写入 `b_u:0` 后的内存。如果写入失败（不应该发生），就用 `m0` 兜底。
+意思是：以 `Mfloat64` 写入 `x_val` 之后，以 `Mint64` 读同一位置，得到 `x_val` 的位模式。fabs 的完整证明链是 `u.f := x` → `u.i = bits(x)` → `u.i &= mask` → `u.f = |x|`，桥接引理是第二环。
 
-#### 辅助引理：`store_m1`
+一开始想用 CompCert 的 `load_store_similar` 定理。这个定理说的是：如果你用 chunk `c1` 写了一个值，那么用同样大小的 chunk `c2` 读，读出来的值和原值之间满足 `decode_encode_val` 关系。看起来正好。但前提要求 `align_chunk c2 <= align_chunk c1`，即读取的对齐不能超过写入的对齐。问题是 `align_chunk Mint64 = 8`，`align_chunk Mfloat64 = 4`，`8 <= 4` 不成立。定理用不了。
 
-```coq
-Lemma store_m1 : Mem.storev Mfloat64 m0 (Vptr b_u Ptrofs.zero) (Vfloat x_val) = Some m1.
-```
+绕路的思路是：不直接从 `store` 跳到 `load`，而是中间多走一步 `loadbytes`。`loadbytes` 读的是原始字节，不关心 chunk 的对齐差异，所以不受这个限制。
 
-`storev` 是 `store` 的"值地址"版本——接受 `Vptr b_u ofs` 而不是分开的 `b_u` 和 `ofs`。这个引理把 `m0_writable` 假设转化为等式形式，供后面 `assign_loc_value` 使用。
+具体分六步。先确认存储成功（`store ... = Some m1`）。然后用 `loadbytes_store_same` 定理拿到存储后的字节内容，就是 `encode_val Mfloat64 (Vfloat x_val)`。因为 `Mint64` 和 `Mfloat64` 的 `size_chunk` 都是 8，所以 `loadbytes` 以 `Mint64` 的参数读也一样。接着验证对齐条件 `align_chunk Mint64 | 0`——8 整除 0，平凡成立。有了 `loadbytes` 的结果和对齐条件，用 `loadbytes_load` 定理把它转成 `load` 的结果：`load Mint64 m1 b_u 0 = Some (decode_val Mint64 (encode_val Mfloat64 (Vfloat x_val)))`。这一步之所以要用定理而不是直接 `unfold Mem.load`，是因为 CompCert 在 Memory.v:4532 把 `Mem.load` 标记成了 `Global Opaque`，不允许展开。
 
-#### 证明目标
+最后一步是算 `decode_val Mint64 (encode_val Mfloat64 (Vfloat x_val))` 的值。CompCert 的 `decode_encode_val_general` 定理给出一个一般性的结论：对任意 chunk 组合，`decode_val chunk2 (encode_val chunk1 v)` 满足 `decode_encode_val v chunk1 chunk2 ...`。展开 `decode_encode_val` 的定义，`Vfloat f, Mfloat64, Mint64` 这个分支恰好是 `v2 = Vlong (Float.to_bits f)`。代入即得 `Vlong (Float.to_bits x_val)`，`rewrite` 进去，证毕。
 
-```coq
-Lemma step_assign_fabs : step2 ge s0 E0 s1.
-```
+### 三个坑
 
-`step2 ge` 是 `step ge (function_entry2 ge)` 的简写——使用"参数作为临时变量"的函数入口策略。`E0` 是空 trace（这条语句不产生外部事件，如 I/O）。
+回头看，这个证明栽了三个跟头。
 
-#### 证明过程
+第一个是 `globalenv` 的 OOM。clightgen 生成的 `.v` 文件里带了 CompCert 全部 40 多个内建函数定义，`Genv.globalenv` 要 `fold_left` 遍历它们构造 PTree，`vm_compute` 扛不住。但 `step_assign` 只查 `genv_cenv`，根本不碰 `genv_genv`，所以空表就够了。
 
-```coq
-Proof.
-  unfold s0, s1. unfold stmt_1.
-  eapply step_assign.
-```
+第二个是 `load_store_similar` 的对齐前提。`Mint64` 的对齐是 8，`Mfloat64` 的对齐是 4——同样是 8 字节的 chunk，对齐居然不一样。这导致"存 `Mfloat64` 取 `Mint64`"这个看似天然的操作不能用现成的定理直接搞定，得绕道 `loadbytes`。
 
-展开状态定义后，`eapply step_assign` 把目标分解为 4 个子目标，对应 `step_assign` 规则的 4 个前提。
-
-**前提 1：求左值 `u.f`**
-
-```coq
-  - eapply eval_Efield_union.
-```
-
-要证明 `eval_lvalue (Efield (Evar _u) _f) b_u 0 Full`，即 `u.f` 的内存位置是 `(b_u, 0)`。`eval_Efield_union` 规则又分解为 4 个子目标：
-
-1. **`eval_expr (Evar _u) (Vptr b_u 0)`**——变量 `u` 求值为指向 `b_u` 偏移 0 的指针：
-   - `eval_Evar_local`：从 `e0` 查表得 `_u ↦ (b_u, Tunion __1049)`
-   - `deref_loc_copy`：`Tunion` 的 `access_mode = By_copy`，返回 `Vptr b_u 0`
-
-2. **`typeof (Evar _u) = Tunion __1049 noattr`**——类型反射，`reflexivity`
-
-3. **`ge.(genv_cenv) ! __1049 = Some co`**——复合环境中有这个 union 的定义：
-   ```coq
-   vm_compute. reflexivity.
-   ```
-   `vm_compute` 瞬间算出 `prog.(prog_comp_env) ! __1049 = Some {...}`
-
-4. **`union_field_offset ge _f (co_members co) = OK (0, Full)`**——`f` 在 union 中的偏移：
-   ```coq
-   vm_compute. reflexivity.
-   ```
-   union 所有成员偏移都是 0，`vm_compute` 算出 `OK (0, Full)`
-
-**前提 2：求右值 `x`**
-
-```coq
-  - eapply eval_Etempvar. unfold le0. reflexivity.
-```
-
-从临时变量环境 `le0` 查表得 `_x ↦ Vfloat x_val`。
-
-**前提 3：类型转换**
-
-```coq
-  - reflexivity.
-```
-
-`sem_cast (Vfloat x_val) tdouble tdouble m0 = Some (Vfloat x_val)`——同类型转换是恒等。
-
-**前提 4：写入内存**
-
-```coq
-  - eapply assign_loc_value.
-    + reflexivity.      (* access_mode tdouble = By_value Mfloat64 *)
-    + exact store_m1.   (* storev ... = Some m1 *)
-```
-
-`assign_loc_value` 规则需要两个前提：`access_mode tdouble = By_value Mfloat64`（`double` 按值存储），以及 `storev` 成功——后者正是辅助引理 `store_m1`。
-
-至此，`step_assign_fabs` 证明完毕。
-
-### 证明二：`H1_bridge`——桥接引理
-
-#### 证明目标
-
-```coq
-Theorem H1_bridge :
-  Mem.load Mint64 m1 b_u 0 = Some (Vlong (Float.to_bits x_val)).
-```
-
-在写入 `u.f = x_val`（以 `Mfloat64` 格式）之后，如果以 `Mint64` 格式读取同一内存位置，得到的是 `x_val` 的 IEEE 754 位模式（作为 `int64`）。
-
-这就是 C 语言 union type-punning 的本质——**以 `double` 格式写入，以 `int64_t` 格式读取，得到的是同一个位模式**。
-
-#### 为什么需要这个引理
-
-fabs 的逻辑链是：
-
-```
-① u.f := x        →  step_assign_fabs 证明（内存 m0→m1，写入 x_val）
-② u.i = bits(x)    →  H1_bridge 证明（读 m1 得 Float.to_bits x_val）
-③ u.i &= mask      →  （后续：位操作清除符号位）
-④ u.f = |x|        →  （后续：逆向桥接，读回浮点数）
-```
-
-`H1_bridge` 是这条链的第二环——它证明浮点到整数的 type-punning 在 CompCert 内存模型中是合法的。
-
-#### 失败的第一次尝试：`load_store_similar`
-
-最初想用 CompCert 的 `load_store_similar` 定理（Memory.v:1053）：
-
-```coq
-Theorem load_store_similar:
-  forall chunk',
-  size_chunk chunk' = size_chunk chunk ->
-  align_chunk chunk' <= align_chunk chunk ->    (* ← 这个前提！ *)
-  exists v', load chunk' m2 b ofs = Some v' /\ ...
-```
-
-前提要求 `align_chunk chunk' <= align_chunk chunk`，即读取的对齐 ≤ 写入的对齐。但：
-
-```
-align_chunk Mint64   = 8
-align_chunk Mfloat64 = 4
-```
-
-`8 <= 4` 不成立！这个定理用不了。
-
-#### 成功的方案：`loadbytes_store_same` + `loadbytes_load` + `decode_encode_val_general`
-
-绕过 `load_store_similar`，用三步组合：
-
-**Step 1**：确认存储成功了
-
-```coq
-assert (STORE : Mem.store Mfloat64 m0 b_u 0 (Vfloat x_val) = Some m1).
-```
-
-从 `m0_writable` 和 `valid_access_store` 得出。
-
-**Step 2**：存储后的字节内容
-
-```coq
-assert (LBS : Mem.loadbytes m1 b_u 0 (size_chunk Mfloat64)
-              = Some (encode_val Mfloat64 (Vfloat x_val))).
-{ eapply Mem.loadbytes_store_same. exact STORE. }
-```
-
-用 CompCert 定理 `loadbytes_store_same`——存储后，`loadbytes`（读原始字节）返回的就是 `encode_val` 编码后的值。
-
-**Step 3**：chunk 大小相同
-
-```coq
-assert (LBS' : Mem.loadbytes m1 b_u 0 (size_chunk Mint64)
-               = Some (encode_val Mfloat64 (Vfloat x_val))).
-{ replace (size_chunk Mint64) with (size_chunk Mfloat64) by reflexivity. exact LBS. }
-```
-
-`size_chunk Mint64 = size_chunk Mfloat64 = 8`，所以读 8 字节的 `Mint64` 版本和 `Mfloat64` 版本一样。
-
-**Step 4**：对齐条件
-
-```coq
-assert (AL : (align_chunk Mint64 | 0)).
-{ cbn. exists 0%Z. reflexivity. }
-```
-
-`align_chunk Mint64 = 8`，`8 | 0` 成立（0 是任何数的倍数）。这是下一步 `loadbytes_load` 的前提。
-
-**Step 5**：从 `loadbytes` 到 `load`
-
-```coq
-assert (LOAD : Mem.load Mint64 m1 b_u 0
-               = Some (decode_val Mint64 (encode_val Mfloat64 (Vfloat x_val)))).
-{ apply Mem.loadbytes_load with (bytes := encode_val Mfloat64 (Vfloat x_val)).
-  - exact LBS'.
-  - exact AL. }
-```
-
-用 CompCert 定理 `loadbytes_load`（Memory.v:756）——如果有 `loadbytes = Some bytes` 且对齐满足，则 `load = Some (decode_val chunk bytes)`。
-
-这一步不能 `unfold Mem.load` 因为它是 `Global Opaque`（Memory.v:4532）。`loadbytes_load` 是 CompCert 提供的官方桥梁，在不展开 `load` 的情况下推导其值。
-
-**Step 6**：decode-encode 的逆
-
-```coq
-assert (DECODE : decode_val Mint64 (encode_val Mfloat64 (Vfloat x_val))
-                 = Vlong (Float.to_bits x_val)).
-{ assert (D : decode_encode_val (Vfloat x_val) Mfloat64 Mint64
-                 (decode_val Mint64 (encode_val Mfloat64 (Vfloat x_val)))).
-  { apply decode_encode_val_general. }
-  unfold decode_encode_val in D. exact D. }
-```
-
-用 CompCert 定理 `decode_encode_val_general`（Memdata.v:524）——对任意 chunk 组合，`decode_val chunk2 (encode_val chunk1 v)` 满足 `decode_encode_val v chunk1 chunk2 ...`。
-
-展开 `decode_encode_val`（Memdata.v:484）的 `Vfloat f, Mfloat64, Mint64` 分支：
-
-```coq
-| Vfloat f, Mfloat64, Mint64 => v2 = Vlong(Float.to_bits f)
-```
-
-所以 `decode_val Mint64 (encode_val Mfloat64 (Vfloat x_val)) = Vlong (Float.to_bits x_val)`。
-
-最后 `rewrite DECODE in LOAD` 完成证明。
-
-### 工程技巧总结
-
-整个证明过程中遇到了三个工程障碍：
-
-1. **`globalenv` OOM**：`Genv.globalenv prog` 遍历 40+ 个内建函数定义，`vm_compute` 时 OOM。解决方法：手动构造 `ge`，`genv_genv` 用空环境，因为 `step_assign` 只访问 `genv_cenv`。
-
-2. **`load_store_similar` 不可用**：`align_chunk Mint64 (8) > align_chunk Mfloat64 (4)`，前提不成立。解决方法：改用 `loadbytes_store_same` + `loadbytes_load` + `decode_encode_val_general` 的三步组合，绕过对齐约束。
-
-3. **`Mem.load` 是 Opaque**：`Global Opaque Mem.load`（Memory.v:4532），不能 `unfold`。解决方法：用 `loadbytes_load` 定理在不展开 `load` 的情况下推导其值。
+第三个是 `Mem.load` 被 `Global Opaque` 标记。不能 `unfold` 它看内部结构，只能通过 `loadbytes_load` 这类定理间接推导。这大概是 CompCert 为了控制证明的计算行为而做的设计——`load` 的定义里有 `valid_access_dec`，展开后会产生大量子目标，不如用高层定理。
 
