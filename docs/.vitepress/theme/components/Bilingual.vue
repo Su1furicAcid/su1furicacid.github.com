@@ -43,6 +43,8 @@
   gap: 2.5rem;
   margin: 1.5rem 0;
   align-items: start;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 150px;
 }
 
 .bilingual-col {
@@ -132,6 +134,7 @@
   .bilingual {
     grid-template-columns: 1fr;
     gap: 0;
+    contain-intrinsic-size: auto 300px;
   }
 
   .bilingual-zh {
