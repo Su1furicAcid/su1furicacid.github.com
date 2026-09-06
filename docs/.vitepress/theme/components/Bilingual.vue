@@ -50,6 +50,7 @@
 .bilingual-col {
   min-width: 0;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .bilingual-label {

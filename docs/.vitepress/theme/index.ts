@@ -3,6 +3,7 @@ import DefaultTheme from 'vitepress/theme'
 import { h } from 'vue'
 import Bilingual from './components/Bilingual.vue'
 import SidebarToggle from './components/SidebarToggle.vue'
+import './custom.css'
 
 export default {
   extends: DefaultTheme,

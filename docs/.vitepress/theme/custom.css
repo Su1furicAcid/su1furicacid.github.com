@@ -1,0 +1,6 @@
+mjx-container[jax='SVG'] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+  scrollbar-width: thin;
+}
