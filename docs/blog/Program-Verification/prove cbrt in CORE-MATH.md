@@ -11,7 +11,7 @@ tags:
 
 > 原文：*Correctly Rounded Cubic Root Evaluation in Double Precision* — Alexei Sibidanov, Paul Zimmermann（[CORE-MATH](https://core-math.gitlabpages.inria.fr/) 项目）。
 >
-> 本文为中英双语对照翻译。原文插图未收录在仓库中，正文中仅保留图注，图片请参见原论文；原文由 OCR 得到，其中明显的讹误（包括公式编号）已在翻译时径直修正。
+> 本文为中英双语对照翻译，并收录了原文的全部插图（图 3–5 原为四幅子图，此处按原文 2×2 版式拼合为一图）；原文由 OCR 得到，其中明显的讹误（包括公式编号）已在翻译时径直修正。
 
 <Bilingual>
 <template #en>
@@ -387,12 +387,27 @@ To cover the exact cases we test that the last 35 bits of x are identical then t
 </template>
 </Bilingual>
 
+![Figure 1](<prove cbrt in CORE-MATH/fig1.jpg>)
+
+<Bilingual>
+<template #en>
+
+**Figure 1.** The cubic root error $h_1$ after the first 9th order iteration step starting from $x_0 = 1.104$.
+
+</template>
+<template #zh>
+
+**图 1.** 从 $x_0 = 1.104$ 出发、经过第一次九阶迭代步骤后的立方根误差 $h_1$。
+
+</template>
+</Bilingual>
+
 ## 1. Rounding Error Analysis
 
 <Bilingual>
 <template #en>
 
-Below is the C code corresponding to the algorithm proposed above, with a cubic minimax polynomial for the initial approximation, a first cubic Newton iteration in double precision, and another classical second-order Newton iteration in double-double precision. Here zz is the input reduced to the range [1, 8), and z is reduced to [1, 2). The constants $c_0, c_1, c_2, c_3$ are those of a minimax polynomial of $x^{1/3}$ over [1, 2], namely (in hexadecimal notation) `c[0]=0x1.1b0babccfef9cp-1`, `c[1]=0x1.2c9a3e94d1da5p-1`, `c[2]=-0x1.4dc30b1a1ddbap-3`, `c[3]=0x1.7a8d3e4ec9b07p-6`. The value `cvt2.f` is either 1 when $1 \leq zz < 2$, the approximation `0x1.428a2f98d728bp+0` of $2^{1/3}$ when $2 \leq zz < 4$ or when $4 \leq zz < 8$ the approximation `0x1.965fea53d6e3dp+0` of $2^{2/3}$. All variables have double precision, and we renamed some variables for better clarity:
+Below is the C code corresponding to the algorithm proposed above, with a cubic minimax polynomial for the initial approximation, a first cubic Newton iteration in double precision, and another classical second-order Newton iteration in double-double precision. Here `zz` is the input reduced to the range [1, 8), and `z` is reduced to [1, 2). The constants $c_0, c_1, c_2, c_3$ are those of a minimax polynomial of $x^{1/3}$ over [1, 2], namely (in hexadecimal notation) `c[0]=0x1.1b0babccfef9cp-1`, `c[1]=0x1.2c9a3e94d1da5p-1`, `c[2]=-0x1.4dc30b1a1ddbap-3`, `c[3]=0x1.7a8d3e4ec9b07p-6`. The value `cvt2.f` is either 1 when $1 \leq zz < 2$, the approximation `0x1.428a2f98d728bp+0` of $2^{1/3}$ when $2 \leq zz < 4$ or when $4 \leq zz < 8$ the approximation `0x1.965fea53d6e3dp+0` of $2^{2/3}$. All variables have double precision, and we renamed some variables for better clarity:
 
 ```txt
 - r = 1/z
@@ -402,6 +417,28 @@ Below is the C code corresponding to the algorithm proposed above, with a cubic 
 - y0 = c0 + z2*c2
 - y2a = y0*y0
 ```
+
+</template>
+<template #zh>
+
+下面是对应于上述算法的 C 代码：用一个三次 minimax 多项式做初始近似，第一次立方 Newton 迭代采用双精度，另一次经典的二阶 Newton 迭代采用双倍双精度。这里 `zz` 是归约到区间 [1, 8) 的输入，`z` 归约到 [1, 2)。常数 $c_0, c_1, c_2, c_3$ 是 $x^{1/3}$ 在 [1, 2] 上的 minimax 多项式系数，即（十六进制表示）`c[0]=0x1.1b0babccfef9cp-1`、`c[1]=0x1.2c9a3e94d1da5p-1`、`c[2]=-0x1.4dc30b1a1ddbap-3`、`c[3]=0x1.7a8d3e4ec9b07p-6`。`cvt2.f` 的取值是：当 $1 \leq zz < 2$ 时为 1；当 $2 \leq zz < 4$ 时为 $2^{1/3}$ 的近似 `0x1.428a2f98d728bp+0`；当 $4 \leq zz < 8$ 时为 $2^{2/3}$ 的近似 `0x1.965fea53d6e3dp+0`。所有变量都是双精度，为清晰起见我们对一些变量做了重命名：
+
+```txt
+- r = 1/z
+- z2 = z*z
+- c0 = c[0]+z*c[1]
+- c2 = c[2]+z*c[3]
+- y0 = c0 + z2*c2
+- y2a = y0*y0
+```
+
+</template>
+</Bilingual>
+
+![Figure 2](<prove cbrt in CORE-MATH/fig2.jpg>)
+
+<Bilingual>
+<template #en>
 
 Then the second block of instructions is:
 
@@ -419,17 +456,6 @@ Then the second block of instructions is:
 
 </template>
 <template #zh>
-
-下面是对应于上述算法的 C 代码：用一个三次 minimax 多项式做初始近似，第一次立方 Newton 迭代采用双精度，另一次经典的二阶 Newton 迭代采用双倍双精度。这里 zz 是归约到区间 [1, 8) 的输入，z 归约到 [1, 2)。常数 $c_0, c_1, c_2, c_3$ 是 $x^{1/3}$ 在 [1, 2] 上的 minimax 多项式系数，即（十六进制表示）`c[0]=0x1.1b0babccfef9cp-1`、`c[1]=0x1.2c9a3e94d1da5p-1`、`c[2]=-0x1.4dc30b1a1ddbap-3`、`c[3]=0x1.7a8d3e4ec9b07p-6`。`cvt2.f` 的取值是：当 $1 \leq zz < 2$ 时为 1；当 $2 \leq zz < 4$ 时为 $2^{1/3}$ 的近似 `0x1.428a2f98d728bp+0`；当 $4 \leq zz < 8$ 时为 $2^{2/3}$ 的近似 `0x1.965fea53d6e3dp+0`。所有变量都是双精度，为清晰起见我们对一些变量做了重命名：
-
-```txt
-- r = 1/z
-- z2 = z*z
-- c0 = c[0]+z*c[1]
-- c2 = c[2]+z*c[3]
-- y0 = c0 + z2*c2
-- y2a = y0*y0
-```
 
 第二段指令为：
 
@@ -451,16 +477,31 @@ Then the second block of instructions is:
 <Bilingual>
 <template #en>
 
-Then y1 - dy is a good approximation of $zz^{1/3}$.
+Then `y1 - dy` is a good approximation of $zz^{1/3}$.
 
 If there are no rounding errors, the algorithm corresponds to a rational approximation $p(x)/q(x)$, where $p$ has degree 84 and coefficients up to 569 digits, and $q(x) = kx^9$, where $k$ is an integer of 569 digits (in the case $1 \leq x \leq 2$).
 
 </template>
 <template #zh>
 
-于是 y1 - dy 就是 $zz^{1/3}$ 的一个良好近似。
+于是 `y1 - dy` 就是 $zz^{1/3}$ 的一个良好近似。
 
 若不存在舍入误差，该算法对应于一个有理逼近 $p(x)/q(x)$，其中 $p$ 为 84 次多项式、系数最多 569 位，而 $q(x) = kx^9$，$k$ 是一个 569 位的整数（在 $1 \leq x \leq 2$ 的情形下）。
+
+</template>
+</Bilingual>
+
+![Figure 3](<prove cbrt in CORE-MATH/fig3.jpg>)
+
+<Bilingual>
+<template #en>
+
+**Figure 3.** The error $h_1$ after the first second order Newton iteration step for various initial approximations. The plot order is the same as in Fig. 2.
+
+</template>
+<template #zh>
+
+**图 3.** 针对各种初始近似、在第一次二阶 Newton 迭代步骤之后的误差 $h_1$。子图顺序与图 2 相同。
 
 </template>
 </Bilingual>
@@ -470,14 +511,14 @@ If there are no rounding errors, the algorithm corresponds to a rational approxi
 
 To each floating-point operation which can produce a rounding error, say $a + b$, we associate a variable, say $\delta$, representing the corresponding error. We replace the expression $a + b$ by $a + b + \delta$ in $p(x)/q(x)$, differentiate with respect to $\delta$ and replace $\delta$ by 0. This yields the first-order derivative, say $f(x)$, of the cubic root approximation $p(x)/q(x)$ with respect to the rounding error $\delta$. We then compute the maximal absolute value of $f(x)$ over the whole interval [1, 8]. We call this value the sensitivity with respect to $\delta$, and we denote it by $s$. By the Taylor theorem with explicit remainder, the error in the approximation of $x^{1/3}$ coming from the rounding error in $a + b$ is bounded by $s$ times the maximal value of $\delta$. And for several rounding errors $\delta_0, \delta_1, \ldots$ with sensitivities $s_0, s_1, \ldots$, the final error is bounded by $s_0 \max|\delta_0| + s_1 \max|\delta_1| + \cdots$.
 
-Note: we take into account that the subtraction $h = y2 \cdot (y \cdot r) - 1$ is exact due to Sterbenz' theorem.
+Note: we take into account that the subtraction `h = y2*(y*r) - 1` is exact due to Sterbenz' theorem.
 
 </template>
 <template #zh>
 
 对于每一个可能产生舍入误差的浮点运算，比如 $a + b$，我们关联一个变量（比如 $\delta$）来表示相应的误差。我们把 $p(x)/q(x)$ 中的表达式 $a + b$ 替换为 $a + b + \delta$，对 $\delta$ 求导，再令 $\delta = 0$。这样就得到立方根逼近 $p(x)/q(x)$ 关于舍入误差 $\delta$ 的一阶导数，记为 $f(x)$。然后计算 $f(x)$ 在整个区间 [1, 8] 上的最大绝对值。我们把这个值称为关于 $\delta$ 的灵敏度（sensitivity），记为 $s$。根据带显式余项的 Taylor 定理，由 $a + b$ 中的舍入误差所导致的 $x^{1/3}$ 逼近误差以 $s$ 乘以 $\delta$ 的最大值为界。对于若干个舍入误差 $\delta_0, \delta_1, \ldots$（灵敏度分别为 $s_0, s_1, \ldots$），最终误差以 $s_0 \max|\delta_0| + s_1 \max|\delta_1| + \cdots$ 为界。
 
-注：我们利用了减法 $h = y2 \cdot (y \cdot r) - 1$ 由 Sterbenz 定理保证精确这一点。
+注：我们利用了减法 `h = y2*(y*r) - 1` 由 Sterbenz 定理保证精确这一点。
 
 </template>
 </Bilingual>
@@ -485,12 +526,27 @@ Note: we take into account that the subtraction $h = y2 \cdot (y \cdot r) - 1$ i
 <Bilingual>
 <template #en>
 
-The two instructions y2h = y1\*y1 and y2l = fma(y1, y1, -y2h) compute a double-double approximation y2h + y2l of y1\*y1. In the rounding to nearest mode, we have exactly y2h + y2l = y1\*y1. For directed rounding modes, since y1\*y1 can be represented exactly with 106 bits, we can write y1\*y1 = h + l with h being the rounding of y1\*y1 towards zero, and l representable in double precision. If y2h = h, then y1\*y1 - y2h = l and can be represented exactly, thus y2h + y2l = y1\*y1. Now if y2h = nextabove(h), then y1\*y1 - y2h = h + l - (h + ulp(h)) = l - ulp(h), and since ulp(l) is larger or equal to ulp(h) multiplied by $2^{-53}$, the difference ulp(h) - l is exactly representable. In summary, for all rounding modes we have y1\*y1 = y2h + y2l exactly. Similarly, we have y2h\*y1 = y3 + y3l exactly, thus y1\*y1\*y1 = y3 + y3l + delta17, where delta17 is the rounding error in y1\*y2l. Since y1 is less than 2, and y2l is less than ulp(y1\*y1) which is $2^{-52}$, y1\*y2l is bounded by $2^{-51}$, and the rounding error on y1\*y2l is thus $|\delta_{17}| \leq 2^{-104}$.
+The two instructions `y2h = y1*y1` and `y2l = fma(y1, y1, -y2h)` compute a double-double approximation `y2h + y2l` of `y1*y1`. In the rounding to nearest mode, we have exactly `y2h + y2l = y1*y1`. For directed rounding modes, since `y1*y1` can be represented exactly with 106 bits, we can write `y1*y1 = h + l` with `h` being the rounding of `y1*y1` towards zero, and `l` representable in double precision. If `y2h = h`, then `y1*y1 - y2h = l` and can be represented exactly, thus `y2h + y2l = y1*y1`. Now if `y2h = nextabove(h)`, then `y1*y1 - y2h = h + l - (h + ulp(h)) = l - ulp(h)`, and since `ulp(l)` is larger or equal to `ulp(h)` multiplied by $2^{-53}$, the difference `ulp(h) - l` is exactly representable. In summary, for all rounding modes we have `y1*y1 = y2h + y2l` exactly. Similarly, we have `y2h*y1 = y3 + y3l` exactly, thus `y1*y1*y1 = y3 + y3l + delta17`, where `delta17` is the rounding error in `y1*y2l`. Since `y1` is less than 2, and `y2l` is less than `ulp(y1*y1)` which is $2^{-52}$, `y1*y2l` is bounded by $2^{-51}$, and the rounding error on `y1*y2l` is thus $|\delta_{17}| \leq 2^{-104}$.
 
 </template>
 <template #zh>
 
-指令 y2h = y1\*y1 和 y2l = fma(y1, y1, -y2h) 计算 y1\*y1 的双倍双精度近似 y2h + y2l。在就近舍入模式下，精确地有 y2h + y2l = y1\*y1。对于方向舍入模式，由于 y1\*y1 可以用 106 位精确表示，我们可以写成 y1\*y1 = h + l，其中 h 是 y1\*y1 向零舍入的结果，l 可以用双精度表示。若 y2h = h，则 y1\*y1 - y2h = l 且能精确表示，因此 y2h + y2l = y1\*y1。若 y2h = nextabove(h)，则 y1\*y1 - y2h = h + l - (h + ulp(h)) = l - ulp(h)，又由于 ulp(l) 大于等于 ulp(h) 乘以 $2^{-53}$，差 ulp(h) - l 可以精确表示。总之，对所有舍入模式，都精确地有 y1\*y1 = y2h + y2l。类似地，精确地有 y2h\*y1 = y3 + y3l，因此 y1\*y1\*y1 = y3 + y3l + delta17，其中 delta17 是 y1\*y2l 的舍入误差。由于 y1 小于 2，而 y2l 小于 ulp(y1\*y1)（即 $2^{-52}$），y1\*y2l 以 $2^{-51}$ 为界，故 y1\*y2l 上的舍入误差满足 $|\delta_{17}| \leq 2^{-104}$。
+指令 `y2h = y1*y1` 和 `y2l = fma(y1, y1, -y2h)` 计算 `y1*y1` 的双倍双精度近似 `y2h + y2l`。在就近舍入模式下，精确地有 `y2h + y2l = y1*y1`。对于方向舍入模式，由于 `y1*y1` 可以用 106 位精确表示，我们可以写成 `y1*y1 = h + l`，其中 `h` 是 `y1*y1` 向零舍入的结果，`l` 可以用双精度表示。若 `y2h = h`，则 `y1*y1 - y2h = l` 且能精确表示，因此 `y2h + y2l = y1*y1`。若 `y2h = nextabove(h)`，则 `y1*y1 - y2h = h + l - (h + ulp(h)) = l - ulp(h)`，又由于 `ulp(l)` 大于等于 `ulp(h)` 乘以 $2^{-53}$，差 `ulp(h) - l` 可以精确表示。总之，对所有舍入模式，都精确地有 `y1*y1 = y2h + y2l`。类似地，精确地有 `y2h*y1 = y3 + y3l`，因此 `y1*y1*y1 = y3 + y3l + delta17`，其中 `delta17` 是 `y1*y2l` 的舍入误差。由于 `y1` 小于 2，而 `y2l` 小于 `ulp(y1*y1)`（即 $2^{-52}$），`y1*y2l` 以 $2^{-51}$ 为界，故 `y1*y2l` 上的舍入误差满足 $|\delta_{17}| \leq 2^{-104}$。
+
+</template>
+</Bilingual>
+
+![Figure 4](<prove cbrt in CORE-MATH/fig4.jpg>)
+
+<Bilingual>
+<template #en>
+
+**Figure 4.** The error $h_1$ after the first third order Newton iteration step for various initial approximations. The plot order is the same as in Fig. 2.
+
+</template>
+<template #zh>
+
+**图 4.** 针对各种初始近似、在第一次三阶 Newton 迭代步骤之后的误差 $h_1$。子图顺序与图 2 相同。
 
 </template>
 </Bilingual>
@@ -504,6 +560,21 @@ When one adds all rounding error bounds from Table 1, one gets a maximum error (
 <template #zh>
 
 把表 1 中所有的舍入误差界相加，得到最大误差（由舍入引起）为 $1.13 \cdot 10^{-26}$。把舍入误差的界 $1.13 \cdot 10^{-26}$ 与数学误差的界 $1.32 \cdot 10^{-23}$ 相加，得到全局界 $1.322 \cdot 10^{-23} < 2^{-76}$，因此我们可以在舍入测试中使用 $2^{-76}$ 作为误差裕度。
+
+</template>
+</Bilingual>
+
+![Figure 5](<prove cbrt in CORE-MATH/fig5.jpg>)
+
+<Bilingual>
+<template #en>
+
+**Figure 5.** The error $h_1$ after the first quartic order Newton iteration step for various initial approximations. The plot order is the same as in Fig. 2.
+
+</template>
+<template #zh>
+
+**图 5.** 针对各种初始近似、在第一次四阶 Newton 迭代步骤之后的误差 $h_1$。子图顺序与图 2 相同。
 
 </template>
 </Bilingual>
@@ -523,74 +594,9 @@ When one adds all rounding error bounds from Table 1, one gets a maximum error (
 </template>
 </Bilingual>
 
-## Figures / 图注
+## Figures 6–10 / 图 6–10
 
-> 说明：原文图示未收录于仓库中，以下仅保留图注（中英对照），图片请参见原论文。
-
-<Bilingual>
-<template #en>
-
-**Figure 1.** The cubic root error $h_1$ after the first 9th order iteration step starting from $x_0 = 1.104$.
-
-</template>
-<template #zh>
-
-**图 1.** 从 $x_0 = 1.104$ 出发、经过第一次九阶迭代步骤后的立方根误差 $h_1$。
-
-</template>
-</Bilingual>
-
-<Bilingual>
-<template #en>
-
-**Figure 2.** The error $h_0$ of initial approximations. Top-left plot – second order, top-right – third order, bottom-left – fourth order, and bottom-right – the fifth order polynomial.
-
-</template>
-<template #zh>
-
-**图 2.** 各次初始近似的误差 $h_0$。左上：二阶；右上：三阶；左下：四阶；右下：五阶多项式。
-
-</template>
-</Bilingual>
-
-<Bilingual>
-<template #en>
-
-**Figure 3.** The error $h_1$ after the first second order Newton iteration step for various initial approximations. The plot order is the same as in Fig. 2.
-
-</template>
-<template #zh>
-
-**图 3.** 针对各种初始近似、在第一次二阶 Newton 迭代步骤之后的误差 $h_1$。子图顺序与图 2 相同。
-
-</template>
-</Bilingual>
-
-<Bilingual>
-<template #en>
-
-**Figure 4.** The error $h_1$ after the first third order Newton iteration step for various initial approximations. The plot order is the same as in Fig. 2.
-
-</template>
-<template #zh>
-
-**图 4.** 针对各种初始近似、在第一次三阶 Newton 迭代步骤之后的误差 $h_1$。子图顺序与图 2 相同。
-
-</template>
-</Bilingual>
-
-<Bilingual>
-<template #en>
-
-**Figure 5.** The error $h_1$ after the first quartic order Newton iteration step for various initial approximations. The plot order is the same as in Fig. 2.
-
-</template>
-<template #zh>
-
-**图 5.** 针对各种初始近似、在第一次四阶 Newton 迭代步骤之后的误差 $h_1$。子图顺序与图 2 相同。
-
-</template>
-</Bilingual>
+![Figure 6](<prove cbrt in CORE-MATH/fig6.jpg>)
 
 <Bilingual>
 <template #en>
@@ -605,6 +611,8 @@ When one adds all rounding error bounds from Table 1, one gets a maximum error (
 </template>
 </Bilingual>
 
+![Figure 7](<prove cbrt in CORE-MATH/fig7.jpg>)
+
 <Bilingual>
 <template #en>
 
@@ -617,6 +625,8 @@ When one adds all rounding error bounds from Table 1, one gets a maximum error (
 
 </template>
 </Bilingual>
+
+![Figure 8](<prove cbrt in CORE-MATH/fig8.jpg>)
 
 <Bilingual>
 <template #en>
@@ -631,6 +641,8 @@ When one adds all rounding error bounds from Table 1, one gets a maximum error (
 </template>
 </Bilingual>
 
+![Figure 9](<prove cbrt in CORE-MATH/fig9.jpg>)
+
 <Bilingual>
 <template #en>
 
@@ -643,6 +655,8 @@ When one adds all rounding error bounds from Table 1, one gets a maximum error (
 
 </template>
 </Bilingual>
+
+![Figure 10](<prove cbrt in CORE-MATH/fig10.jpg>)
 
 <Bilingual>
 <template #en>
@@ -674,24 +688,24 @@ When one adds all rounding error bounds from Table 1, one gets a maximum error (
 
 | $\delta_i$ | instruction | sensitivity $s_i$ | $\max \lvert \delta_i \rvert$ | $s_i \cdot \max \lvert \delta_i \rvert$ |
 |---|---|---|---|---|
-| $\delta_0$ | r=1/z | $2^{-38.5}$ | $2^{-53}$ | $2^{-91.5}$ |
-| $\delta_1$ | z2 = z\*z | $2^{-62.8}$ | $2^{-51}$ | $2^{-113.8}$ |
-| $\delta_2$ | z\*c[1] | $2^{-60.0}$ | $2^{-52}$ | $2^{-112.0}$ |
-| $\delta_3$ | c[0]+z\*c[1] | $2^{-60.0}$ | $2^{-52}$ | $2^{-112.0}$ |
-| $\delta_4$ | z\*c[3] | $2^{-58.0}$ | $2^{-57}$ | $2^{-115.0}$ |
-| $\delta_5$ | c[2]+z\*c[3] | $2^{-58.0}$ | $2^{-55}$ | $2^{-113.0}$ |
-| $\delta_6$ | z2\*c2 | $2^{-60.0}$ | $2^{-54}$ | $2^{-104.0}$ |
-| $\delta_7$ | y0=c0+z2\*c2 | $2^{-60.0}$ | $2^{-52}$ | $2^{-102.0}$ |
-| $\delta_8$ | y2a=y0\*y0 | $2^{-37.9}$ | $2^{-52}$ | $2^{-89.9}$ |
-| $\delta_9$ | y0\*r | $2^{-36.9}$ | $2^{-53}$ | $2^{-89.9}$ |
-| $\delta_{10}$ | y2a\*(y0\*r) | $2^{-37.5}$ | $2^{-52}$ | $2^{-89.5}$ |
-| $\delta_{11}$ | h0\*y0 | $2^{-37.9}$ | $2^{-64}$ | $2^{-101.9}$ |
-| $\delta_{12}$ | u1\*h0 | $2^{-48.1}$ | $2^{-67}$ | $2^{-115.1}$ |
-| $\delta_{13}$ | u0-u1\*h0 | $2^{-48.1}$ | $2^{-54}$ | $2^{-102.1}$ |
-| $\delta_{14}$ | (h0\*y0)\*(u0-u1\*h0) | $2^{-36.3}$ | $2^{-65}$ | $2^{-101.3}$ |
-| $\delta_{15}$ | y1=y0-... | $2^{-36.3}$ | $2^{-52}$ | $2^{-88.3}$ |
-| $\delta_{16}$ | y1 \*= cvt2.f | $2^{-37.0}$ | $2^{-51}$ | $2^{-88.0}$ |
-| $\delta_{17}$ | error on y1\*y1\*y1 | $2^{-1.5}$ | $2^{-104}$ | $2^{-105.5}$ |
-| $\delta_{18}$ | h1 = ((y3 - zz) + y3l)\*rr | $2^{-0.5}$ | $2^{-90}$ | $2^{-90.5}$ |
-| $\delta_{19}$ | y1\*u0 | $2^{-37.4}$ | $2^{-52}$ | $2^{-89.4}$ |
-| $\delta_{20}$ | h1\*(y1\*u0) | 1 | $2^{-91}$ | $2^{-91.0}$ |
+| $\delta_0$ | `r=1/z` | $2^{-38.5}$ | $2^{-53}$ | $2^{-91.5}$ |
+| $\delta_1$ | `z2 = z*z` | $2^{-62.8}$ | $2^{-51}$ | $2^{-113.8}$ |
+| $\delta_2$ | `z*c[1]` | $2^{-60.0}$ | $2^{-52}$ | $2^{-112.0}$ |
+| $\delta_3$ | `c[0]+z*c[1]` | $2^{-60.0}$ | $2^{-52}$ | $2^{-112.0}$ |
+| $\delta_4$ | `z*c[3]` | $2^{-58.0}$ | $2^{-57}$ | $2^{-115.0}$ |
+| $\delta_5$ | `c[2]+z*c[3]` | $2^{-58.0}$ | $2^{-55}$ | $2^{-113.0}$ |
+| $\delta_6$ | `z2*c2` | $2^{-60.0}$ | $2^{-54}$ | $2^{-104.0}$ |
+| $\delta_7$ | `y0=c0+z2*c2` | $2^{-60.0}$ | $2^{-52}$ | $2^{-102.0}$ |
+| $\delta_8$ | `y2a=y0*y0` | $2^{-37.9}$ | $2^{-52}$ | $2^{-89.9}$ |
+| $\delta_9$ | `y0*r` | $2^{-36.9}$ | $2^{-53}$ | $2^{-89.9}$ |
+| $\delta_{10}$ | `y2a*(y0*r)` | $2^{-37.5}$ | $2^{-52}$ | $2^{-89.5}$ |
+| $\delta_{11}$ | `h0*y0` | $2^{-37.9}$ | $2^{-64}$ | $2^{-101.9}$ |
+| $\delta_{12}$ | `u1*h0` | $2^{-48.1}$ | $2^{-67}$ | $2^{-115.1}$ |
+| $\delta_{13}$ | `u0-u1*h0` | $2^{-48.1}$ | $2^{-54}$ | $2^{-102.1}$ |
+| $\delta_{14}$ | `(h0*y0)*(u0-u1*h0)` | $2^{-36.3}$ | $2^{-65}$ | $2^{-101.3}$ |
+| $\delta_{15}$ | `y1=y0-...` | $2^{-36.3}$ | $2^{-52}$ | $2^{-88.3}$ |
+| $\delta_{16}$ | `y1 *= cvt2.f` | $2^{-37.0}$ | $2^{-51}$ | $2^{-88.0}$ |
+| $\delta_{17}$ | error on `y1*y1*y1` | $2^{-1.5}$ | $2^{-104}$ | $2^{-105.5}$ |
+| $\delta_{18}$ | `h1 = ((y3 - zz) + y3l)*rr` | $2^{-0.5}$ | $2^{-90}$ | $2^{-90.5}$ |
+| $\delta_{19}$ | `y1*u0` | $2^{-37.4}$ | $2^{-52}$ | $2^{-89.4}$ |
+| $\delta_{20}$ | `h1*(y1*u0)` | 1 | $2^{-91}$ | $2^{-91.0}$ |
