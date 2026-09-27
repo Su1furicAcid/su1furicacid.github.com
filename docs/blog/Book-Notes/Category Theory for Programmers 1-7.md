@@ -213,6 +213,75 @@ unit _ = ()
 
 积类型也可以在范畴中找到类似的泛构造。我们构造这样的一个模式，一个对象 $c$ 和分别连接到两个对象 $a$ 和 $b$ 的态射 $p :: c -> a$ 和 $q :: c -> b$。
 
-在集合和函数构成的范畴中，已知两个对象 $Int$ 和 $Bool$，能找出很多符合要求的对象 $c$，比如 $(Int, Int, Bool)$、$(Int, Bool)$、$(Bool, Int)$ 甚至 $Int$。泛构造的另一半是排名。假设两个对象 $c'$ 和 $c$ 都满足了上面的模式，如果存在一个从 $c'$ 到 $c$ 的态射，那么 $c$ 就比 $c'$ 更好；此外， $c'$ 的投影可以通过 $c$ 的投影还原出来。
+在集合和函数构成的范畴中，已知两个对象 $Int$ 和 $Bool$，能找出很多符合要求的对象 $c$，比如 $(Int, Int, Bool)$、$(Int, Bool)$、$(Bool, Int)$ 甚至 $Int$。
+
+泛构造的另一半是排名，为了选出我们希望的“积类型”这个形状：假设两个对象 $c'$ 和 $c$ 都满足了上面的模式，如果存在一个从 $c'$ 到 $c$ 的态射，那么 $c$ 就比 $c'$ 更好；此外， $c'$ 的通过态射 $p$ 和 $q$ 到达的对象 $a$ 和 $b$ 可以通过 $c$ 的“还原”出来。
+
+以上述三个对象为例，$(Int, Int, Bool)$ 存在一个到 $(Int, Bool)$ 的态射 $m$，同时，$(Int, Int, Bool)$ 到对象 $Int$ 的态射 $p'$ 满足 $p' = m . p$；对于 $Int$ 虽然比积类型更小，但是无法“还原”态射；综上所述，积类型是最适合这种泛构造的对象。
+
+#### Challenges
+
+TBD
+
+## Chapter 6, Simple Algebraic Data Types
+
+以类型集合上的积类型为例，$(Int, Bool)$ 和 $(Bool, Int)$ 携带的信息是相同的，二者在同构意义下等价。这种情况可以拓展到 unit 类型，即 `a` 和 `(a, ())` 是等价的（这说明 Set 在积运算下是一个幺半范畴）。
+
+Haskell 中的类型构造器 `|`（和 C 语言中的 `union`）可以直观上理解成和类型。我们会发现类型满足一些代数运算法则，比如乘法分配律：
+
+$a * (b + c) = a * b + b * c$
+
+对应到 Haskell 中，即：
+
+`(a, Either b c) = Either (a, b) (a, c)`
+
+这里的等号并非结构相等，只是等价的一个表达。很容易构造出从等号左边到等号右边的一个映射，以及从等号右边到等号左边的一个逆映射，二者的复合是一个恒等映射。
+
+在数学上这对应半环的定义。`(Set, *, ())` `(Set, +, Void)` 分别是两个幺半群，同时积对和有分配律 `(a + b) * c = a * c + b * c`，以及存在零吸收律 `a * Void = Void`。
+
+#### Challenges
+
+TBD
+
+## Chapter 7, Functors
+
+给定两个范畴 $C$ $D$，函子 $F$ 把范畴 $C$ 的对象 $a$ 和态射 $f: a -> b$ 都映射到 $D$ 中，即 $F a$ 和 $F f : F a -> F b$，同时保持 $F id_a = id_{F a}$，$F (g . f) = F g . F f$。
+
+Maybe 函子把一个类型 `a` 映射到 `Maybe a`，把函数 `f :: a -> b` 映射到 `f' :: Maybe a -> Maybe b`：
+
+```haskell
+data Maybe a = Nothing | Just a
+f' :: Maybe a -> Maybe b
+f' Nothing = Nothing
+f' Just x = Just f x
+```
+
+我们可以提取出一个通用的 `fmap`，他把原范畴中的函数 `a -> b` 提升到目标范畴中的 `F a -> F b`。在上面 Maybe 函子的例子中：
+
+```haskell
+fmap :: (a -> b) -> Maybe a -> Maybe b
+fmap _ Nothing = Nothing
+fmap f (Just x) = Just f x
+```
+
+我们可以用 Haskell 的 Typeclasses （类型类）完成这个抽象。类型类定义了一个具有类似行为的类型/类型构造器族的通用接口：
+
+```haskell
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+```
+
+函子不止是一个容器。一个固定了参数类型 `r` 的函数类型 `(->) r` 也可以看作一个函子，把类型 `a` 映射到 `r -> a`，把函数 `a -> b` 映射到 `(r -> a) -> (r -> b)`，此时 `fmap` 就是函数复合:
+
+```haskell
+fmap :: (a -> b) -> (r -> a) -> (r -> b)
+
+instance Functor ((->) r) where
+  fmap f g = f . g
+```
+
+函子也可以进行复合。函子复合满足结合律是相当显然的（对象映射满足结合律，态射映射也满足结合律）。而且每个范畴中都有一个平凡的恒等函子：它把每个对象映到自身，把每个态射映到自身。所以，函子具备某个范畴中态射的所有性质。我们后面还会看到，函子本身也构成范畴。
+
+#### Challenges
 
 TBD

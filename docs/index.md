@@ -5,7 +5,7 @@ outline: [2, 3]
 
 # About Me
 
-I am **Ao Sun**, currently a undergraduate student at Wuhan University. 
+I am **Ao Sun**, currently a PhD student at Peking University, advised by Prof. [Xin Zhang](https://xinpl.github.io/).
 
 ## Research Interests
 
@@ -14,11 +14,12 @@ My experience in web development has sparked my interest in programming language
 - `Static Program Analysis`
 - `Program Verification`
 - `AI for Software Engineering`
-- `Any other topics related to programming languages and software engineering`
+- `...`
 
 ## Education
 
-- `B.S. in Computer Science`, `Wuhan University`, `2022 - 2026`
+- B.S. in Computer Science, Wuhan University, 2022 - 2026
+- PhD. in Computer Science, Peking University, 2026 - ?
 
 ## Hobbies and Interests
 
@@ -26,6 +27,6 @@ I enjoy playing electronic games, especially First-Person Shooter (FPS) games an
 
 ## Contact
 
-- Email: [2022300004031@whu.edu.com](mailto:2022300004031@whu.edu.com)
+- Email: [sunao26@stu.pku.edu.cn](mailto:sunao26@stu.pku.edu.cn)
 - GitHub: [su1furicacid](https://github.com/su1furicacid)
 - CV: [Download CV](#)

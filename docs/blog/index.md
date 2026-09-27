@@ -23,6 +23,8 @@ function isEmpty(group: BlogTopicGroup): boolean {
 
 Posts are grouped by topic and sorted by publication date automatically. Topics may contain nested subcategories.
 
+Some previous posts are at [HERE](https://www.cnblogs.com/sysss-blogs).
+
 <div v-if="topicGroups.length === 0">
   No posts yet.
 </div>
