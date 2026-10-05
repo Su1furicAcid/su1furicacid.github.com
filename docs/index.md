@@ -5,7 +5,7 @@ outline: [2, 3]
 
 # About Me
 
-I am **Ao Sun**, currently a PhD student at Peking University, advised by Prof. [Xin Zhang](https://xinpl.github.io/).
+I am **Ao Sun**, currently a PhD student at Peking University, advised by **Prof. [Xin Zhang](https://xinpl.github.io/)**.
 
 ## Research Interests
 
@@ -23,7 +23,11 @@ My experience in web development has sparked my interest in programming language
 
 ## Hobbies and Interests
 
-I enjoy playing electronic games, especially First-Person Shooter (FPS) games and Role-Playing Games (RPGs). I also have a keen interest in electronic music.
+I enjoy playing electronic games, especially First-Person Shooter (FPS) games and Role-Playing Games (RPGs). 
+
+I have a keen interest in electronic music.
+
+I am a fan of [SCP](https://scp-wiki-cn.wikidot.com/).
 
 ## Contact
 
