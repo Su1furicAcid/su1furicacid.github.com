@@ -1,6 +1,6 @@
 ---
 title: Category Theory for Programmers 8
-date: 2026-09-14
+date: 2026-10-06
 summary: Notes on Category Theory for Programmers, chapters 8.
 tags:
     - Category Theory
@@ -115,7 +115,7 @@ instance Contravariant (Op r) where
 综上所述，函数箭头运算符在它的第一个参数上是逆变的，在第二个参数上是协变的。如果目标范畴是 Set，这就叫做副函子（Profunctor）：
 
 $$
-C^{op} \times D -> Set
+C^{op} \times D \rightarrow Set
 $$
 
 在 Haskell 中：
