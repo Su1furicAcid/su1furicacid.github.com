@@ -96,6 +96,56 @@ safeHead (fmap f (x:xs)) = safeHead (f x : fmap f xs) = Just (f x)
 
 自然变换看上去可以直观的理解成函子之间的态射。那么函子本身看上去也能构成一个范畴。对于任意一对范畴 $C$ $D$，都存在一个对应的函子范畴 $Fun(C, D)$（或者 $[C, D]$、$D^C$），范畴中的对象是函子，态射是自然变换。自然变换的复合满足结合律。对于每个函子 $F$，都存在一个恒等自然变换 $1_F$，在对象 $a$ 上的分量是 $id_{F a} : F a \rightarrow F a$。
 
-定义一个更高层次的范畴 $Cat$，函子范畴和我们之前经常讨论的 Set 范畴都是 $Cat$ 范畴中的对象。$Cat$ 中的 hom 集合就是一个函子的集合（函子范畴），$[C, D]$ 就是 $Hom_{Cat}(C, D)$。这和上一节中函数类型的表现很相似，同样可以把函子范畴写成一个指数对象 $D^C = Hom_{Cat}(C, D)$。$Cat$ 也是一个笛卡尔闭范畴。
+定义一个更高层次的范畴 $Cat$，函子范畴和我们之前经常讨论的 Set 范畴都是 $Cat$ 范畴中的对象。$Cat$ 中的 hom 集合就是一个函子的集合（函子范畴），$[C, D]$ 就是 $Hom_{Cat}(C, D)$。这和上一节中函数类型的表现很相似，同样可以把函子范畴写成一个指数对象，直观上可以写作 $D^C = Hom_{Cat}(C, D)$（这里并不是指相等，因为等式左边是一个范畴，等式右边是一个集合，集合相比范畴缺失了态射）。$Cat$ 也是一个笛卡尔闭范畴。
 
-TBD...
+二范畴（2-category）是对普通范畴的推广，两个对象之间的态射可以构成范畴（而不是只在 hom 集的角度定义和讨论它们），这意味着我们可以讨论态射的态射：
+
+| 层次 | 含义 | 在 \(\mathbf{Cat}\) 中的对应 |
+|---|---|---|
+| 对象（0-cell） | 基本对象 | 小范畴 |
+| 1-态射（1-morphism） | 对象之间的态射 | 函子 |
+| 2-态射（2-morphism） | 1-态射之间的态射 | 自然变换 |
+
+我们已经定义了自然变换的复合，假设有三个函子 $F, G, H: C \rightarrow D$，以及两个自然变换 $\alpha: F \rightarrow G$ $\beta: G \rightarrow H$，那么可以将自然变换复合 $\beta \cdot \alpha : F \rightarrow H$。这称为垂直复合。垂直复合解决了同一个函子范畴内部态射的复合问题。
+
+水平复合是指：考虑三个范畴 $C, D, E$，以及四个函子 $F, F': C \rightarrow D$ $G, G' : D \rightarrow E$，假设存在自然变换 $\alpha : F \rightarrow F'$ $\beta : G \rightarrow G'$。可以构造函子的复合 $G \cdot F : C \rightarrow E$ $G' \cdot F' : C \rightarrow E$。可以利用 $\alpha$ 和 $\beta$ 构造这两个函子复合之间的关系。
+
+仍然从投影出发，选择 $C$ 中任意的一个对象 $a$，由于 $\alpha : F \rightarrow F'$，有投影 $\alpha_a : F a \rightarrow F' a$，考虑函子 $G$ $G'$，得到四个对象 $G F a$ $G' F a$ $G F' a$ $G' F' a$，以及四个态射 $G F a \rightarrow G F' a$（等等...）。这些对象和态射可以组成一个交换图，根据自然性定义从左上角到右下角的两条路径相等。这就称为自然变换的水平复合。
+
+从二范畴的角度看，垂直复合是在态射范畴内部进行的态射复合，而水平复合则允许我们沿着 1-态射 的复合方向组合 2-态射。
+
+#### Challenges
+
+1.
+
+```haskell
+maybeToList :: Maybe a -> List a
+maybeToList Nothing = []
+maybeToList Just x = [x]
+
+{--
+fmap f (maybeToList Nothing)
+= fmap f []
+= []
+
+maybeToList (fmap f Nothing)
+= maybeToList Nothing
+= []
+--}
+```
+
+2.  
+
+```haskell
+-- 1st
+alpha :: Reader () a -> [a]
+alpha _ = []
+
+-- 2nd
+beta :: Reader () a -> [a]
+beta (Reader f) = [f ()]
+```
+
+无限多个
+
+3.  4.  5.  6.  略

@@ -5,7 +5,9 @@ outline: [2, 3]
 
 # About Me
 
-I am **Ao Sun**, currently a PhD student at Peking University, advised by **Prof. [Xin Zhang](https://xinpl.github.io/)**. I previously obtained my bachelor's degree from the School of Computer Science at Wuhan University, advised by **Prof.[Mengting Yuan](https://cs.whu.edu.cn/info/1019/2500.htm)**.
+I am **Ao Sun**, currently a **PhD student** at **Peking University**, advised by **Prof. [Xin Zhang](https://xinpl.github.io/)**.
+
+I previously obtained my bachelor's degree from the School of Computer Science at Wuhan University, advised by **Prof.[Mengting Yuan](https://cs.whu.edu.cn/info/1019/2500.htm)**.
 
 ## Research Interests
 
